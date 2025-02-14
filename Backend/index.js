@@ -35,7 +35,20 @@ app.use(express.static("public"))
 //config cookie-parser
 app.use(cookieParser())
 
-app.get("/", ()=>{
+
+
+//importing routes 
+import userRouter from './routes/users.routes.js';
+
+
+//route decleaation 
+app.use("/api/users", userRouter)
+
+
+
+
+
+app.get("/", (req, res)=>{
     res.send("Hello World!");
 })
 
