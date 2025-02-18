@@ -8,7 +8,9 @@ import cookieParser from 'cookie-parser';
 import connectDB from './db/database.js';
 
 //dotenv configuration
-dotenv.config()
+dotenv.config({
+    path: './.env'
+})
 
 //express app
 const app = express();
