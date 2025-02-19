@@ -5,6 +5,27 @@ import { uploadFileOnCloudinary } from "../utils/cloudinary.fileupload.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
 
+//methods to generate refresh and access tokens 
+//this medhod will find useer form ther id and generates access token and refresh token  then it saces refresht token to database 
+const generateAccessAndRefereshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        //adding refreshtoekn of a user in database and save it 
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return { accessToken, refreshToken }
+
+
+    } catch (error) {
+        throw new apiError(500, "Something went wrong while generating refresh and access token")
+    }
+}
+
+
 const registerUser = asyncHandler(async (req, res) => {
     // Extract user data from request body
     const { username, email, fullname, password } = req.body;
@@ -24,7 +45,12 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Retrieve file paths for avatar and cover image (if provided)
     const avatarLocalPath = req.files?.avatar?.[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+    // const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+
+    let coverImageLocalPath;
+    if (req.file && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
 
     // Ensure the avatar image is provided
     if (!avatarLocalPath) {
@@ -66,4 +92,90 @@ const registerUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser };
+
+//user login
+
+const loginUser = asyncHandler(async (req, res) => {
+
+    //retriving data from user 
+    //const { email, username, password } = req.body;
+    const { email, password } = req.body;
+
+    // || this refers to 'or'
+    // if (!username || !email) {
+    //     throw new apiError(400, "Username or Password is Required");
+    // }
+
+    //logging in user form email only
+    if (!email) {
+        throw new apiError(400, "Email and password are required")
+    }
+
+    //$or is an mongodb operator 
+    //find if username or email is existing in database or not 
+    // const user = await User.findOne({
+    //     $or: [{ username }, { email }]
+    // })
+
+    //find if email is exist or not in database
+    const user = await User.findOne({ email })
+
+    //throw an error if the username or password didnt match 
+    if (!user) {
+        throw new apiError(404, "User doesn't exist")
+
+    }
+    console.log(email);
+    console.log(password);
+
+
+    //validate user password 
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if (!isPasswordValid) {
+        throw new apiError(401, "Please Provide a Vallid Password.")
+    }
+
+    //calling the method generateAccessAndRefereshTokens
+    const { refreshToken, accessToken } = await generateAccessAndRefereshTokens(user._id);
+
+    const loginUser = await User.findById(user._id).select("-password -refreshToken")
+
+    // cookies
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(new apiResponse(200, { user: loginUser, accessToken, refreshToken }, "User loggined Succesfully"))
+
+
+
+})
+
+//user logout
+const logout = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200).clearCookei("accessToken", options).clearCookei("refereshToken", options).json(new apiResponse(200, {}, "User logged out succesfully"))
+
+})
+
+export { registerUser, loginUser, logout };
