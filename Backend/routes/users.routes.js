@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser,loginUser, logout } from "../controllers/users.controller.js";
+import { registerUser,loginUser, logout, refreshAccessToken } from "../controllers/users.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -9,7 +9,8 @@ router.route("/register").post( upload.fields([{name: "avatar", maxCount: 1}, {n
 
 router.route("/login").post(loginUser)
 
-//secured routes 
+//secured routes i.e. without login user cannot logout
 router.route("/logout").post(verifyJWT,logout)
+router.route("/refresh-token").post(refreshAccessToken)
 
 export default router;
