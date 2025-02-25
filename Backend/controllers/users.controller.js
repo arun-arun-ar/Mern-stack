@@ -126,11 +126,10 @@ const loginUser = asyncHandler(async (req, res) => {
         throw new apiError(404, "User doesn't exist")
 
     }
-    console.log(email);
-    console.log(password);
 
 
     //validate user password 
+    //isPasswordCorrect method is defined in user model 
     const isPasswordValid = await user.isPasswordCorrect(password)
 
     if (!isPasswordValid) {
@@ -332,7 +331,36 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, user, "Cover image updatesd succesfully"))
 })
 
-export { registerUser, loginUser, logout, refreshAccessToken, changePassword, getCurrentUser, updateUserDetails, updateUserAvatar, updateCoverImage };
+
+// Get a single user by ID
+const getUserById = asyncHandler(async (req, res) => {
+    const userId = req.params.id;
+
+    // Find user by ID and exclude sensitive fields (password, refreshToken)
+    const user = await User.findById(userId).select("-password -refreshToken");
+
+    // If user is not found, throw an error
+    if (!user) {
+        throw new apiError(404, "User not found");
+    }
+
+    // Return the user data with a success message
+    return res.status(200).json(new apiResponse(200, user, "User fetched successfully"));
+});
+
+// Get all users
+const getAllUsers = asyncHandler(async (req, res) => {
+    // Find all users and exclude sensitive fields (password, refreshToken)
+    const users = await User.find().select("-password -refreshToken");
+
+    // Return all users with a success message
+    return res.status(200).json(new apiResponse(200, users, "All users fetched successfully"));
+});
+
+
+
+
+export { registerUser, loginUser, logout, refreshAccessToken, changePassword, getCurrentUser, updateUserDetails, updateUserAvatar, updateCoverImage, getAllUsers, getUserById };
 
 
 
